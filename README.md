@@ -16,7 +16,7 @@ To get started locally:
 2. **Set up a virtual environment**
    ```bash
    python -m venv venv
-   On Windows: r'venv\Scripts\activate' # On Linux: source venv/bin/activate
+   On Windows: venv\Scripts\activate # On Linux: source venv/bin/activate
 
 3. **Install dependencies**
    ```bash

@@ -10,7 +10,7 @@ To get started locally:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/BuyBuddy-App/app-ai.git
+   git clone https://github.com/ieee-victoris-4-0/FreeDuddy-AI.git
    cd app-ai
 
 2. **Set up a virtual environment**

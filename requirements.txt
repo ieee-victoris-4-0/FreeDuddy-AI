@@ -35,3 +35,4 @@ qdrant-client
 
 # Utilities
 python-dotenv
+streamlit

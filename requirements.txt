@@ -168,5 +168,5 @@ ultralytics==8.3.199
 timm==1.0.19
 opencv-python==4.8.0.74
 qdrant-client==1.15.1
-clip==1.0
 gunicorn==23.0.0
+clip

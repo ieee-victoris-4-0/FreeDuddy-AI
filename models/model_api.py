@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 import io
@@ -13,14 +13,18 @@ import open_clip
 import requests
 from io import BytesIO
 from ultralytics import YOLO  
-import matplotlib.pyplot as plt
 import cv2
+from pydantic import BaseModel
+from typing import Optional, List, Any, Dict
+import uuid
+from qdrant_client.http import models
+from dotenv import load_dotenv
 
 headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
                   "Chrome/139.0.0.0 Safari/537.36"
-            }
+}
 
 def fetch_image(url, timeout=30):
     try:
@@ -32,7 +36,7 @@ def fetch_image(url, timeout=30):
         return None
 
 app = FastAPI()
-#app.mount("/images", StaticFiles(directory="images"), name="images")  # Serve images from filesystem
+# app.mount("/images", StaticFiles(directory="images"), name="images")  # Serve images from filesystem
 yolo = YOLO("model.pt")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -41,16 +45,15 @@ clip, _, prep = open_clip.create_model_and_transforms(
     pretrained='laion2b_s32b_b82k'   
 )
 
-clip = clip.to(device)
 tokenizer = open_clip.get_tokenizer('ViT-L-14')
-
+load_dotenv()
 # Initialize Qdrant client
+print(f"{os.getenv("API_KEY")}")
+print(f"{os.getenv("DATA_URL")}")
 qdrant_client = QdrantClient(
-    url="https://c9cca5a1-b149-4555-bf54-2d325b2cd2e0.eu-central-1-0.aws.cloud.qdrant.io:6333", 
-    api_key=os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.pXjkVzeQm8jGIJ4SYfFpBqPCVAWXdoOc8u-wC2x6dIk")
+    url= os.getenv("DATA_URL"), 
+    api_key= os.getenv("API_KEY")# Ensure the API key is set in the environment
 )
-
-
 
 class Search:
     def __init__(self, clip, prep, tokenizer, yolo, client):
@@ -104,32 +107,25 @@ class Search:
             limit=5,
             with_payload=True
         )
-        images =[], titles= [],[],[]
-
+        # print(f"{hits}")
         for h in hits:
             idx = h.id
             brand = h.payload.get('brand')
             title = h.payload.get('title')
             price = h.payload.get('price')
-            imageurl = h.payload.get('imageurl')
-            
-            if imageurl :
-                    img = fetch_image(imageurl, timeout=30)  # خلي الـ timeout أطول
-                    if img:
-                        images.append(img)
-                        titles.append(f"{title} - {price} - {brand}")
+            imageurl = h.payload.get('image_url')
+            # print(f"{imageurl}")
+            if imageurl:
+                results.append({
+                    "id": idx,
+                    "brand": brand,
+                    "title": title,
+                    "price": price,
+                    "imageurl": imageurl
+                })
 
-        if images:
-                fig, axes = plt.subplots(1, len(images), figsize=(15, 5))
-                if len(images) == 1:
-                    axes = [axes]
-                for ax, img, title in zip(axes, images, titles):
-                    ax.imshow(img)
-                    ax.axis("off")
-                    ax.set_title(title, fontsize=10)
-                plt.tight_layout()
-                plt.show()
-          
+        return results
+
     def text_search(self, text):
         query = [text]
         query = self.tokenizer(query).to(device)
@@ -145,36 +141,25 @@ class Search:
             limit=5,
             with_payload=True
         )
-        
-        images =[], titles= [],[],[]
-
+        # print(f"{hits}")
+        results = []
         for h in hits:
             idx = h.id
             brand = h.payload.get('brand')
             title = h.payload.get('title')
             price = h.payload.get('price')
-            imageurl = h.payload.get('imageurl')
-            
-            if imageurl :
-                    img = fetch_image(imageurl, timeout=30)  # خلي الـ timeout أطول
-                    if img:
-                        images.append(img)
-                        titles.append(f"{title} - {price} - {brand}")
+            imageurl = h.payload.get('image_url')
+            # print(f"{imageurl}")
+            if imageurl:
+                results.append({
+                    "id": idx,
+                    "brand": brand,
+                    "title": title,
+                    "price": price,
+                    "imageurl": imageurl
+                })
 
-        if images:
-                fig, axes = plt.subplots(1, len(images), figsize=(15, 5))
-                if len(images) == 1:
-                    axes = [axes]
-                for ax, img, title in zip(axes, images, titles):
-                    ax.imshow(img)
-                    ax.axis("off")
-                    ax.set_title(title, fontsize=10)
-                plt.tight_layout()
-                plt.show()
-
-search_instance = Search(clip, prep, tokenizer, yolo, qdrant_client)    
-
-
+        return results
 
 search = Search(
     clip=clip,
@@ -184,12 +169,18 @@ search = Search(
     client=qdrant_client
 )
 
+
+
 @app.post("/search-image")  # Client flow: Image-based search
 async def image_search(file: UploadFile = File(...)):
     try:
-        image_bytes = await file.read()
+        image_bytes = await file.read()  # Await the file read to get bytes
+        print(f"{image_bytes}")
+        if not isinstance(image_bytes, bytes):
+            return {"status": "error", "message": "Invalid file content"}
         results = search.image_search(image_bytes)
-        return {"results": results}
+        print(f"{results}")
+        return {"status": "success", "results": results}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -197,6 +188,11 @@ async def image_search(file: UploadFile = File(...)):
 async def text_search(query: str = Form(...)):
     try:
         results = search.text_search(query)
-        return {"results": results}
+        print(f"{results}")
+        return {"status": "success", "results": results}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    
+
+
+

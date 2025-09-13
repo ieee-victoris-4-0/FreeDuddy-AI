@@ -8,7 +8,7 @@ import torch
 import os
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PointStruct, SearchParams
-from transformers import CLIPProcessor
+#from transformers import CLIPProcessor
 import open_clip
 import requests
 from io import BytesIO
@@ -37,7 +37,7 @@ def fetch_image(url, timeout=30):
 
 app = FastAPI()
 # app.mount("/images", StaticFiles(directory="images"), name="images")  # Serve images from filesystem
-yolo = YOLO("models/model.pt")
+yolo = YOLO("models/my_model.pt")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 clip, _, prep = open_clip.create_model_and_transforms(

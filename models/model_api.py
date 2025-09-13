@@ -89,28 +89,28 @@ class Search:
         ids = []
         
         # Process only the first detected clothing item for simplicity
-        clothe = clothes[0]
-        query_image = self.prep(clothe).unsqueeze(0).to(device)
-        
-        with torch.no_grad():
-            img_feat = self.clip.encode_image(query_image)
-            img_feat /= img_feat.norm(dim=-1, keepdim=True)
-        
-        img_feat = img_feat.detach().cpu().numpy().astype("float32")
-        img_feat = img_feat.squeeze().tolist()
-        
-        hits = self.client.search(
-            collection_name="Buy-Buddy-VD",
-            query_vector=img_feat,
-            limit=5,
-            with_payload=True
-        )
-        # print(f"{hits}")
-        for h in hits:
-            id = h.id
+        for clothe in clothes:
+            query_image = self.prep(clothe).unsqueeze(0).to(device)
             
-            ids.append({
-                    "id": id})
+            with torch.no_grad():
+                img_feat = self.clip.encode_image(query_image)
+                img_feat /= img_feat.norm(dim=-1, keepdim=True)
+            
+            img_feat = img_feat.detach().cpu().numpy().astype("float32")
+            img_feat = img_feat.squeeze().tolist()
+            
+            hits = self.client.search(
+                collection_name="Buy-Buddy-VD",
+                query_vector=img_feat,
+                limit=5,
+                with_payload=True
+            )
+            # print(f"{hits}")
+            for h in hits:
+                id = h.id
+                
+                ids.append({
+                        "id": id})
 
         return ids
 

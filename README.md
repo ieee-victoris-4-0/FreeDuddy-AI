@@ -9,10 +9,11 @@ The **BuyBuddy AI/ML Module** powers the intelligent features of the BuyBuddy ma
 This module is designed to be modular, scalable, and easy to integrate with the BuyBuddy backend.
 
 ## 📋 Features
-- **Image-Based Product Search**: Uses computer vision to match uploaded images with products in the database.
-- **Text-Based Product Search**: A textual search to match the query with products in the database.
-- **Recommendation Engine**: Leverages user data to provide personalized product and gift recommendations. *(Future-Plan)*
+- **Image-Based Product Search**: Uses YOLO for object detection and CLIP for image embeddings to match uploaded images with products in the catalog.
+- **Text-Based Product Search**: Leverages CLIP's text encoding for natural language queries to find relevant products.
 - **API Integration**: Exposes endpoints for image search, text search, and health checks via `model_api.py`.
+- **Interactive Testing**: A Streamlit-based interface (`streamlit_app.py`) for testing visual and text search functionalities.
+- **Vector Database**: Uses Qdrant for efficient storage and retrieval of image and text embeddings.
 
 ## 🛠️ Setup Instructions
 
@@ -36,17 +37,36 @@ To set up the BuyBuddy AI/ML Module locally, follow these steps:
 3. **Install Dependencies**
    ```bash
    pip install -r requirements.txt
+   
+3. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+   Key dependencies include:
+   - `torch`: For model inference (CLIP and YOLO).
+   - `open-clip-torch`: For CLIP model and tokenizer.
+   - `ultralytics`: For YOLO object detection.
+   - `qdrant-client`: For vector database operations.
+   - `fastapi` and `uvicorn`: For the API server.
+   - `streamlit`: For the testing interface.
    ```
 
+4. **Download Pre-trained Models**
+   - The YOLO model (`my_model.pt`) is stored in the `/models` directory. Ensure it is available
+   - The CLIP model (`ViT-L-14`, pretrained on `laion2b_s32b_b82k`) is automatically loaded via `open_clip`.
 
-4. **Set Up Environment Variables**
+5. **Set Up Environment Variables**
    - Create a `.env` file in the root directory with the following variables:
      ```plaintext
-     API_KEY=your_api_key_here
-     DATA_URL=your_url
+     DATA_URL=https://c9cca5a1-b149-4555-bf54-2d325b2cd2e0.eu-central-1-0.aws.cloud.qdrant.io:6333
+     API_KEY=your_qdrant_api_key
      MODEL_PATH=./models
+     DATA_PATH=./data
      ```
-   - Update paths or keys as needed based on your setup, as the database is uploaded on qdrant server.
+   - Replace `your_qdrant_api_key` with the actual Qdrant API key. Ensure the `DATA_URL` matches your Qdrant instance.
+
+6. **Verify Qdrant Collection**
+   - Ensure the Qdrant collection `Buy-Buddy-VD` exists with the correct vector configuration
 
 ## 📁 Folder Structure
 
@@ -54,54 +74,87 @@ To set up the BuyBuddy AI/ML Module locally, follow these steps:
 |------------------------|--------------------------------------------------|
 | `/notebooks`           | Jupyter notebooks for model experimentation and prototyping |
 | `/data`                | Sample datasets and preprocessing scripts        |
-| `/models`              | Saved models and training checkpoints            |
-| `model_api.py`         | Backend API file providing endpoints for image search, text search, and health checks |
-| `streamlit_app.py`     | Script to run a Streamlit-based interface for testing the AI module |
+| `/models`              | Saved models (e.g., `my_model.pt`) and training checkpoints |
+| `model_api.py`         | FastAPI backend providing endpoints for image search, text search, and health checks |
+| `streamlit_app.py`     | Streamlit script for an interactive interface to test visual and text search |
+| `requirements.txt`     | List of Python dependencies |
+| `.env`                 | Environment variables for Qdrant and paths |
 
 ## 🚀 Usage
 
 ### Running the Streamlit App
-To test the AI module locally using the Streamlit interface:
+To test the AI module interactively:
 ```bash
 streamlit run streamlit_app.py
 ```
-This will launch a web interface at `http://localhost:8501` where you can test the visual search, chatbot, and recommendation features.
+- **Access**: Open `http://localhost:8501` in your browser.
+- **Features**:
+  - Upload an image (JPG, JPEG, PNG) to perform a visual search.
+  - Enter a text query to search for products via the chatbot.
+  - View results with product images, titles, and prices fetched from the Qdrant database.
 
 ### Running the API
 To start the backend API:
 ```bash
 python model_api.py
 ```
-Available endpoints:
-- `POST /image-search`: Upload an image to find similar products.
-- `POST /text-search`: Query the chatbot with text input.
-- `GET /health`: Check the API's health status.
-
-Example API call (using `uvicorn`):
+To start the FastAPI server:
 ```bash
-uvicorn model_api:app --reload
+uvicorn model_api.py:app --host 0.0.0.0 --port 5000
 ```
-- Then take the hostlink (usually: `http://127.0.0.1:8000`)
-- Add `/docs` in the end of hostlink to view Swagger UI of API checkpoints
+- **Access**: API is available at `http://localhost:5000`.
+- **Endpoints**:
+  - `GET /health`: Checks the API and Qdrant connection status.
+    ```bash
+    curl http://localhost:5000/health
+    # Response: {"status": "ok"}
+    ```
+  - `POST /search-image`: Upload an image to find similar products.
+    ```bash
+    curl -X POST -F "file=@sample_image.jpg" http://localhost:5000/search-image
+    # Response: {"status": "success", "results": [{"id": "uuid1"}, ...]}
+    ```
+  - `POST /search-text`: Submit a text query to find products.
+    ```bash
+    curl -X POST -F "query=navy blue dress" http://localhost:5000/search-text
+    # Response: {"status": "success", "results": [{"id": "uuid2"}, ...]}
+    ```
 ### Training Models
 To train or fine-tune models:
 1. Navigate to the `/notebooks` directory.
-2. Open the relevant Jupyter notebook (e.g., `deepfashion-yolo.ipynb`).
-3. Save trained models to the `/models` directory.
+2. Open relevant Jupyter notebooks (e.g., `visual_search_training.ipynb`).
+3. Follow the instructions to preprocess data (in `/data`) and train models.
+4. Save trained models to the `/models` directory.
+5. Update the Qdrant collection with new embeddings if necessary.
+
 
 ## 🧠 Technical Details
 
 ### Visual Search
-- **Model**: [YOLO, CLIP]
-- **Framework**: PyTorch
-- **Process**: Convert images into embeddings and save them in vector database on qdrant database and upload on qdrant server (Note: take your api token and url and put them in `.env` file)
-- **Output**: Returns a list of product IDs with similarity scores.
+- **Model**: YOLO for object detection, CLIP (`ViT-L-14`, `laion2b_s32b_b82k`) for image embeddings.
+- **Preprocessing**:
+  - YOLO detects clothing items in the uploaded image and crops bounding boxes.
+  - Cropped images are resized to 224x224 and normalized using CLIP's preprocessing pipeline.
+- **Vector Search**: CLIP embeddings (768-dimensional) are searched in Qdrant using cosine similarity, returning the top 5 matches.
+- **Output**: Product IDs (UUIDs) from the Qdrant collection `Buy-Buddy-VD`.
 
-### Text Search
-- **Model**: CLIP
-- **Framework**: Transformers in open-clip
-- **Input**: Text queries from users.
-- **Output**: Relevant product matches
+### Text-Based Search
+- **Model**: CLIP (`ViT-L-14`, `laion2b_s32b_b82k`) for text embeddings.
+- **Preprocessing**: Text queries are tokenized using CLIP's tokenizer.
+- **Vector Search**: Text embeddings (768-dimensional) are searched in Qdrant, returning the top 5 matches.
+- **Output**: Product IDs (UUIDs) from the Qdrant collection.
+
+### Qdrant Integration
+- **Collection**: `Buy-Buddy-VD` stores product embeddings with payloads (title, price, image URL).
+- **Configuration**: 768-dimensional vectors, cosine distance metric.
+- **Client**: Connects to a Qdrant Cloud instance (configurable via `.env`).
+
+### Streamlit Interface
+- **Purpose**: Provides an interactive UI for testing visual and text search.
+- **Functionality**:
+  - Image upload for visual search.
+  - Text input for chatbot queries.
+  - Displays results with product images and details fetched from Qdrant.
 
 ### Recommendation Engine
 - In Future Plan

@@ -48,8 +48,6 @@ clip, _, prep = open_clip.create_model_and_transforms(
 tokenizer = open_clip.get_tokenizer('ViT-L-14')
 load_dotenv()
 # Initialize Qdrant client
-print(f"{os.getenv("API_KEY")}")
-print(f"{os.getenv("DATA_URL")}")
 qdrant_client = QdrantClient(
     url= os.getenv("DATA_URL"), 
     api_key= os.getenv("API_KEY")# Ensure the API key is set in the environment

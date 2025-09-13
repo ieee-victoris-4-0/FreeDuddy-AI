@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 import io
@@ -19,6 +19,10 @@ from typing import Optional, List, Any, Dict
 import uuid
 from qdrant_client.http import models
 from dotenv import load_dotenv
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -144,6 +148,19 @@ search = Search(
     client=qdrant_client
 )
 
+# Health check endpoint
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health_check():
+    try:
+        # Check Qdrant connection
+        qdrant_client.get_collections()
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"status": "error", "message": str(e)}
+        )
 
 
 @app.post("/search-image")  # Client flow: Image-based search

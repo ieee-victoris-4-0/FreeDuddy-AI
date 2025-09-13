@@ -100,25 +100,17 @@ python model_api.py
 ```
 To start the FastAPI server:
 ```bash
-uvicorn model_api.py:app --host 0.0.0.0 --port 5000
+uvicorn model_api:app --reload
 ```
-- **Access**: API is available at `http://localhost:5000`.
+- **Access**: API is available at `http://127.0.0.1:8000/docs`.
 - **Endpoints**:
   - `GET /health`: Checks the API and Qdrant connection status.
     ```bash
-    curl http://localhost:5000/health
+    http://127.0.0.1:8000/health
     # Response: {"status": "ok"}
     ```
   - `POST /search-image`: Upload an image to find similar products.
-    ```bash
-    curl -X POST -F "file=@sample_image.jpg" http://localhost:5000/search-image
-    # Response: {"status": "success", "results": [{"id": "uuid1"}, ...]}
-    ```
   - `POST /search-text`: Submit a text query to find products.
-    ```bash
-    curl -X POST -F "query=navy blue dress" http://localhost:5000/search-text
-    # Response: {"status": "success", "results": [{"id": "uuid2"}, ...]}
-    ```
 ### Training Models
 To train or fine-tune models:
 1. Navigate to the `/notebooks` directory.

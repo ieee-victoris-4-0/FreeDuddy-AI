@@ -49,7 +49,7 @@ To set up the BuyBuddy AI/ML Module locally, follow these steps:
    - `qdrant-client`: For vector database operations.
    - `fastapi` and `uvicorn`: For the API server.
    - `streamlit`: For the testing interface.
-   ```
+   
 
 4. **Download Pre-trained Models**
    - The YOLO model (`my_model.pt`) is stored in the `/models` directory. Ensure it is available

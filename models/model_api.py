@@ -86,7 +86,7 @@ class Search:
 
     def image_search(self, img_bytes):
         clothes = self.__img_pre(img_bytes)
-        results = []
+        ids = []
         
         # Process only the first detected clothing item for simplicity
         clothe = clothes[0]
@@ -107,22 +107,12 @@ class Search:
         )
         # print(f"{hits}")
         for h in hits:
-            idx = h.id
-            brand = h.payload.get('brand')
-            title = h.payload.get('title')
-            price = h.payload.get('price')
-            imageurl = h.payload.get('image_url')
-            # print(f"{imageurl}")
-            if imageurl:
-                results.append({
-                    "id": idx,
-                    "brand": brand,
-                    "title": title,
-                    "price": price,
-                    "imageurl": imageurl
-                })
+            id = h.id
+            
+            ids.append({
+                    "id": id})
 
-        return results
+        return ids
 
     def text_search(self, text):
         query = [text]
@@ -140,24 +130,12 @@ class Search:
             with_payload=True
         )
         # print(f"{hits}")
-        results = []
+        ids = []
         for h in hits:
-            idx = h.id
-            brand = h.payload.get('brand')
-            title = h.payload.get('title')
-            price = h.payload.get('price')
-            imageurl = h.payload.get('image_url')
-            # print(f"{imageurl}")
-            if imageurl:
-                results.append({
-                    "id": idx,
-                    "brand": brand,
-                    "title": title,
-                    "price": price,
-                    "imageurl": imageurl
-                })
+            id = h.id 
+            ids.append({"id": id})
 
-        return results
+        return ids
 
 search = Search(
     clip=clip,
